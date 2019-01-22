@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using CoreWebAPI.Entities;
-using CoreWebAPI.Services;
+﻿using CoreWebAPI.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using CoreWebAPI.Helpers;
+using CoreWebAPI.Entities;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace CoreWebAPI
 {
@@ -28,7 +24,12 @@ namespace CoreWebAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddMvc(setUpAction => 
+            {
+                setUpAction.ReturnHttpNotAcceptable = true;
+                setUpAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
+                setUpAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter());
+            }).SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             // register the DbContext on the container, getting the connection string from
             // appSettings (note: use this during development; in a production environment,
@@ -41,7 +42,7 @@ namespace CoreWebAPI
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, LibraryContext libraryContext)
         {
             if (env.IsDevelopment())
             {
@@ -49,10 +50,37 @@ namespace CoreWebAPI
             }
             else
             {
+                app.UseExceptionHandler(appBuilder =>
+                {
+                    appBuilder.Run(async context =>
+                    {
+                        context.Response.StatusCode = 500;
+                        await context.Response.WriteAsync("An unexpected fault happened.Try again after some time.");
+                    });
+                });
+
                 app.UseHsts();
             }
 
             app.UseHttpsRedirection();
+
+            AutoMapper.Mapper.Initialize(cfg =>
+            {
+                cfg.CreateMap<Entities.Author, Models.AuthorDto>()
+                    .ForMember(dest => dest.Name, opt => opt.MapFrom(src =>
+                    $"{src.FirstName} {src.LastName}"))
+                    .ForMember(dest => dest.Age, opt => opt.MapFrom(src =>
+                    src.DateOfBirth.GetCurrentAge()));
+
+                cfg.CreateMap<Entities.Book, Models.BookDto>();
+                cfg.CreateMap<Models.AuthorForCreationDto, Entities.Author>();
+                cfg.CreateMap<Models.BookForCreationDto, Entities.Book>();
+                cfg.CreateMap<Models.BookForUpdateDto, Entities.Book>();
+
+            });
+
+            libraryContext.EnsureSeedDataForContext();
+
             app.UseMvc();
         }
     }
