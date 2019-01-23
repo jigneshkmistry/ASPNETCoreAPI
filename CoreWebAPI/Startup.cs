@@ -9,6 +9,8 @@ using CoreWebAPI.Helpers;
 using CoreWebAPI.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace CoreWebAPI
 {
@@ -42,8 +44,8 @@ namespace CoreWebAPI
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, LibraryContext libraryContext)
-        {
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, LibraryContext libraryContext)
+        {      
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -54,8 +56,17 @@ namespace CoreWebAPI
                 {
                     appBuilder.Run(async context =>
                     {
+                        var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
+                        if (exceptionHandlerFeature != null)
+                        {
+                            var logger = loggerFactory.CreateLogger("Global exception logger");
+                            logger.LogError(500,
+                                exceptionHandlerFeature.Error,
+                                exceptionHandlerFeature.Error.Message);
+                        }
+
                         context.Response.StatusCode = 500;
-                        await context.Response.WriteAsync("An unexpected fault happened.Try again after some time.");
+                        await context.Response.WriteAsync("An unexpected fault happened. Try again later.");
                     });
                 });
 

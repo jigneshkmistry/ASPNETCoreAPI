@@ -4,6 +4,7 @@ using CoreWebAPI.Models;
 using CoreWebAPI.Services;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 
@@ -13,7 +14,10 @@ namespace CoreWebAPI.Controllers
     public class BooksController : Controller
     {
 
+
         #region PRIVATE MEMBERS
+
+        private ILogger<BooksController> _logger;
 
         private ILibraryRepository _libraryRepository;
 
@@ -22,8 +26,9 @@ namespace CoreWebAPI.Controllers
 
         #region CONSTRUCTOR
 
-        public BooksController(ILibraryRepository libraryRepository)
+        public BooksController(ILibraryRepository libraryRepository, ILogger<BooksController> logger)
         {
+            _logger = logger;
             _libraryRepository = libraryRepository;
         }
 
@@ -131,6 +136,8 @@ namespace CoreWebAPI.Controllers
             }
 
             _libraryRepository.DeleteBook(bookForAuthorFromRepo);
+
+            _logger.LogInformation(100, $"A book {id} for author {authorId} failed on save.");
 
             if (!_libraryRepository.Save())
             {
