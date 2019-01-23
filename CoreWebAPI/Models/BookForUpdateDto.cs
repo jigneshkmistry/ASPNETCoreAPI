@@ -7,20 +7,10 @@ using System.Threading.Tasks;
 
 namespace CoreWebAPI.Models
 {
-    public class BookForUpdateDto : BookForManipulationDto
+    public class BookForUpdateDto 
     {
-        [Required(ErrorMessage = "You should fill out a description.")]
-        public override string Description
-        {
-            get
-            {
-                return base.Description;
-            }
+        public string Title { get; set; }
+        public string Description { get; set; }
 
-            set
-            {
-                base.Description = value;
-            }
-        }
     }
 }
