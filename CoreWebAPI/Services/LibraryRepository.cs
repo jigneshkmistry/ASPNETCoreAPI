@@ -1,4 +1,5 @@
 ﻿using CoreWebAPI.Entities;
+using CoreWebAPI.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -64,9 +65,14 @@ namespace CoreWebAPI.Services
             return _context.Authors.FirstOrDefault(a => a.Id == authorId);
         }
 
-        public IEnumerable<Author> GetAuthors()
+        public PagedList<Author> GetAuthors(AuthorsResourceParameters authorsResourceParameters)
         {
-            return _context.Authors.OrderBy(a => a.FirstName).ThenBy(a => a.LastName);
+            var collectionBeforePagging = _context.Authors
+                    .OrderBy(a => a.FirstName)
+                    .ThenBy(a => a.LastName);
+
+            return PagedList<Author>.Create(collectionBeforePagging,
+                        authorsResourceParameters.PageNumber, authorsResourceParameters.PageSize);
         }
 
         public IEnumerable<Author> GetAuthors(IEnumerable<Guid> authorIds)
