@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Serialization;
+using System.Linq;
 
 namespace CoreWebAPI
 {
@@ -34,6 +35,16 @@ namespace CoreWebAPI
                 setUpAction.ReturnHttpNotAcceptable = true;
                 setUpAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
                 setUpAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter());
+
+
+                var jsonOutputFormatter = setUpAction.OutputFormatters
+                    .OfType<JsonOutputFormatter>().FirstOrDefault();
+
+                if (jsonOutputFormatter != null)
+                {
+                    jsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.hateoas+json");
+                }
+
             })
             .AddJsonOptions(options =>
             {

@@ -42,7 +42,8 @@ namespace CoreWebAPI.Controllers
         #region HTTPGET
 
         [HttpGet(Name = "GetAuthors")]
-        public IActionResult GetAuthors(AuthorsResourceParameters authorsResourceParameters)
+        public IActionResult GetAuthors(AuthorsResourceParameters authorsResourceParameters, 
+            [FromHeader(Name = "Accept")] string mediaType)
         {
             if (!_propertyMappingService.ValidMappingExistsFor<AuthorDto, Author>
               (authorsResourceParameters.OrderBy))
@@ -58,40 +59,69 @@ namespace CoreWebAPI.Controllers
 
             var authorsFromRepo = _libraryRepository.GetAuthors(authorsResourceParameters);
 
-            var paginationMetadata = new
-            {
-                totalCount = authorsFromRepo.TotalCount,
-                pageSize = authorsFromRepo.PageSize,
-                currentPage = authorsFromRepo.CurrentPage,
-                totalPages = authorsFromRepo.TotalPages,
-            };
-
-            Response.Headers.Add("X-Pagination",
-              Newtonsoft.Json.JsonConvert.SerializeObject(paginationMetadata));
-
             var authors = Mapper.Map<IEnumerable<AuthorDto>>(authorsFromRepo);
 
-            var links = CreateLinksForAuthors(authorsResourceParameters,
+            if (mediaType == "application/vnd.marvin.hateoas+json")
+            {
+                var paginationMetadata = new
+                {
+                    totalCount = authorsFromRepo.TotalCount,
+                    pageSize = authorsFromRepo.PageSize,
+                    currentPage = authorsFromRepo.CurrentPage,
+                    totalPages = authorsFromRepo.TotalPages,
+                };
+
+                Response.Headers.Add("X-Pagination",
+                  Newtonsoft.Json.JsonConvert.SerializeObject(paginationMetadata));
+
+                var links = CreateLinksForAuthors(authorsResourceParameters,
                 authorsFromRepo.HasNext, authorsFromRepo.HasPrevious);
 
-            var shapedAuthors = authors.ShapeData(authorsResourceParameters.Fields);
-            
-            var shapedAuthorsWithLinks = shapedAuthors.Select(author =>
+                var shapedAuthors = authors.ShapeData(authorsResourceParameters.Fields);
+
+                var shapedAuthorsWithLinks = shapedAuthors.Select(author =>
+                {
+                    var authorAsDictionary = author as IDictionary<string, object>;
+                    var authorLinks = CreateLinksForAuthor((Guid)authorAsDictionary["Id"], authorsResourceParameters.Fields);
+
+                    authorAsDictionary.Add("links", authorLinks);
+
+                    return authorAsDictionary;
+                });
+
+                var linkedCollectionResource = new
+                {
+                    value = shapedAuthorsWithLinks,
+                    links = links
+                };
+
+                return Ok(linkedCollectionResource);
+            }
+            else
             {
-                var authorAsDictionary = author as IDictionary<string, object>;
-                var authorLinks = CreateLinksForAuthor((Guid)authorAsDictionary["Id"], authorsResourceParameters.Fields);
+                var previousPageLink = authorsFromRepo.HasPrevious ?
+                  CreateAuthorsResourceUri(authorsResourceParameters,
+                  ResourceUriType.PreviousPage) : null;
 
-                authorAsDictionary.Add("links", authorLinks);
+                var nextPageLink = authorsFromRepo.HasNext ?
+                    CreateAuthorsResourceUri(authorsResourceParameters,
+                    ResourceUriType.NextPage) : null;
 
-                return authorAsDictionary;
-            });
+                var paginationMetadata = new
+                {
+                    previousPageLink = previousPageLink,
+                    nextPageLink = nextPageLink,
+                    totalCount = authorsFromRepo.TotalCount,
+                    pageSize = authorsFromRepo.PageSize,
+                    currentPage = authorsFromRepo.CurrentPage,
+                    totalPages = authorsFromRepo.TotalPages
+                };
 
-            var linkedCollectionResource = new
-            {
-                value = shapedAuthorsWithLinks,
-                links = links
-            };
-            return Ok(linkedCollectionResource);
+                Response.Headers.Add("X-Pagination",
+                    Newtonsoft.Json.JsonConvert.SerializeObject(paginationMetadata));
+
+                return Ok(authors.ShapeData(authorsResourceParameters.Fields));
+            }
         }
 
         [HttpGet("{id}", Name = "GetAuthor")]
