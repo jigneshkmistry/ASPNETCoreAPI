@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Newtonsoft.Json.Serialization;
 
 namespace CoreWebAPI
 {
@@ -28,11 +29,16 @@ namespace CoreWebAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc(setUpAction => 
+            services.AddMvc(setUpAction =>
             {
                 setUpAction.ReturnHttpNotAcceptable = true;
                 setUpAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
                 setUpAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter());
+            })
+            .AddJsonOptions(options =>
+            {
+                options.SerializerSettings.ContractResolver =
+                new CamelCasePropertyNamesContractResolver();
             }).SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             // register the DbContext on the container, getting the connection string from
@@ -50,6 +56,10 @@ namespace CoreWebAPI
                 var actionContext = implementationFactory.GetService<IActionContextAccessor>().ActionContext;
                 return new UrlHelper(actionContext);
             });
+
+            services.AddTransient<ITypeHelperService, TypeHelperService>();
+
+            services.AddTransient<IPropertyMappingService, PropertyMappingService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

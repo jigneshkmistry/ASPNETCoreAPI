@@ -1,5 +1,6 @@
 ﻿using CoreWebAPI.Entities;
 using CoreWebAPI.Helpers;
+using CoreWebAPI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,10 +10,12 @@ namespace CoreWebAPI.Services
     public class LibraryRepository : ILibraryRepository
     {
         private LibraryContext _context;
+        private IPropertyMappingService _propertyMappingService;
 
-        public LibraryRepository(LibraryContext context)
+        public LibraryRepository(LibraryContext context, IPropertyMappingService propertyMappingService)
         {
             _context = context;
+            _propertyMappingService = propertyMappingService;
         }
 
         public void AddAuthor(Author author)
@@ -67,16 +70,17 @@ namespace CoreWebAPI.Services
 
         public PagedList<Author> GetAuthors(AuthorsResourceParameters authorsResourceParameters)
         {
-            var collectionBeforePagging = _context.Authors
-                    .OrderBy(a => a.FirstName)
-                    .ThenBy(a => a.LastName).AsQueryable();
+            var collectionBeforePaging =
+                _context.Authors
+                .ApplySort(authorsResourceParameters.OrderBy,
+                _propertyMappingService.GetPropertyMapping<AuthorDto, Author>());
 
             if (!string.IsNullOrEmpty(authorsResourceParameters.Genre))
             {
                 // trim & ignore casing
                 var genreForWhereClause = authorsResourceParameters.Genre
                     .Trim().ToLowerInvariant();
-                collectionBeforePagging = collectionBeforePagging
+                collectionBeforePaging = collectionBeforePaging
                     .Where(a => a.Genre.ToLowerInvariant() == genreForWhereClause);
             }
 
@@ -86,13 +90,13 @@ namespace CoreWebAPI.Services
                 var searchQueryForWhereClause = authorsResourceParameters.SearchQuery
                     .Trim().ToLowerInvariant();
 
-                collectionBeforePagging = collectionBeforePagging
+                collectionBeforePaging = collectionBeforePaging
                     .Where(a => a.Genre.ToLowerInvariant().Contains(searchQueryForWhereClause)
                     || a.FirstName.ToLowerInvariant().Contains(searchQueryForWhereClause)
                     || a.LastName.ToLowerInvariant().Contains(searchQueryForWhereClause));
             }
 
-            return PagedList<Author>.Create(collectionBeforePagging,
+            return PagedList<Author>.Create(collectionBeforePaging,
                         authorsResourceParameters.PageNumber, authorsResourceParameters.PageSize);
         }
 
