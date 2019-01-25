@@ -69,7 +69,28 @@ namespace CoreWebAPI.Services
         {
             var collectionBeforePagging = _context.Authors
                     .OrderBy(a => a.FirstName)
-                    .ThenBy(a => a.LastName);
+                    .ThenBy(a => a.LastName).AsQueryable();
+
+            if (!string.IsNullOrEmpty(authorsResourceParameters.Genre))
+            {
+                // trim & ignore casing
+                var genreForWhereClause = authorsResourceParameters.Genre
+                    .Trim().ToLowerInvariant();
+                collectionBeforePagging = collectionBeforePagging
+                    .Where(a => a.Genre.ToLowerInvariant() == genreForWhereClause);
+            }
+
+            if (!string.IsNullOrEmpty(authorsResourceParameters.SearchQuery))
+            {
+                // trim & ignore casing
+                var searchQueryForWhereClause = authorsResourceParameters.SearchQuery
+                    .Trim().ToLowerInvariant();
+
+                collectionBeforePagging = collectionBeforePagging
+                    .Where(a => a.Genre.ToLowerInvariant().Contains(searchQueryForWhereClause)
+                    || a.FirstName.ToLowerInvariant().Contains(searchQueryForWhereClause)
+                    || a.LastName.ToLowerInvariant().Contains(searchQueryForWhereClause));
+            }
 
             return PagedList<Author>.Create(collectionBeforePagging,
                         authorsResourceParameters.PageNumber, authorsResourceParameters.PageSize);
