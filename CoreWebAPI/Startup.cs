@@ -37,12 +37,30 @@ namespace CoreWebAPI
                 setUpAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter());
 
 
+                var xmlDataContractSerializerInputFormatter =
+                    new XmlDataContractSerializerInputFormatter();
+                xmlDataContractSerializerInputFormatter.SupportedMediaTypes
+                    .Add("application/vnd.marvin.authorwithdateofdeath.full+xml");
+                setUpAction.InputFormatters.Add(xmlDataContractSerializerInputFormatter);
+
+                var jsonInputFormatter = setUpAction.InputFormatters
+              .OfType<JsonInputFormatter>().FirstOrDefault();
+
+                if (jsonInputFormatter != null)
+                {
+                    jsonInputFormatter.SupportedMediaTypes
+                    .Add("application/vnd.marvin.author.full+json");
+                    jsonInputFormatter.SupportedMediaTypes
+                    .Add("application/vnd.marvin.authorwithdateofdeath.full+json");
+                }
+
                 var jsonOutputFormatter = setUpAction.OutputFormatters
                     .OfType<JsonOutputFormatter>().FirstOrDefault();
 
                 if (jsonOutputFormatter != null)
                 {
                     jsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.hateoas+json");
+                    jsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.authorwithdateofdeath.full.hateoas+json");
                 }
 
             })
@@ -111,10 +129,11 @@ namespace CoreWebAPI
                     .ForMember(dest => dest.Name, opt => opt.MapFrom(src =>
                     $"{src.FirstName} {src.LastName}"))
                     .ForMember(dest => dest.Age, opt => opt.MapFrom(src =>
-                    src.DateOfBirth.GetCurrentAge()));
+                    src.DateOfBirth.GetCurrentAge(src.DateOfDeath)));
 
                 cfg.CreateMap<Entities.Book, Models.BookDto>();
                 cfg.CreateMap<Models.AuthorForCreationDto, Entities.Author>();
+                cfg.CreateMap<Models.AuthorForCreationWithDateOfDeathDto, Entities.Author>();
                 cfg.CreateMap<Models.BookForCreationDto, Entities.Book>();
                 cfg.CreateMap<Models.BookForUpdateDto, Entities.Book>();
                 cfg.CreateMap<Entities.Book, Models.BookForUpdateDto>();

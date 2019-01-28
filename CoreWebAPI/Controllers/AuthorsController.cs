@@ -157,6 +157,8 @@ namespace CoreWebAPI.Controllers
         #region HTTPPOST
 
         [HttpPost(Name = "CreateAuthor")]
+        [RequestHeaderMatchesMediaType("Content-Type",
+            new[] { "application/vnd.marvin.author.full+json" })]
         public IActionResult CreateAuthor([FromBody] AuthorForCreationDto author)
         {
             if (author == null)
@@ -187,6 +189,49 @@ namespace CoreWebAPI.Controllers
                 new { id = authorToReturn.Id },
                 linkedResourceToReturn);
         }
+
+        [HttpPost(Name = "CreateAuthorWithDateOfDeath")]
+        [RequestHeaderMatchesMediaType("Content-Type",
+           new[] { "application/vnd.marvin.authorwithdateofdeath.full+json",
+                    "application/vnd.marvin.authorwithdateofdeath.full+xml" })]
+        [RequestHeaderMatchesMediaType("Accept", 
+            new[] { "application/vnd.marvin.authorwithdateofdeath.full.hateoas+json" })]
+        public IActionResult CreateAuthorWithDateOfDeath(
+           [FromBody] AuthorForCreationWithDateOfDeathDto author, [FromHeader(Name = "Accept")] string mediaType)
+        {
+            if (author == null)
+            {
+                return BadRequest();
+            }
+
+            var authorEntity = Mapper.Map<Author>(author);
+
+            _libraryRepository.AddAuthor(authorEntity);
+
+            if (!_libraryRepository.Save())
+            {
+                throw new Exception("Creating an author failed on save.");
+                // return StatusCode(500, "A problem happened with handling your request.");
+            }
+
+            var authorToReturn = Mapper.Map<AuthorDto>(authorEntity);
+
+            if(mediaType == "application/vnd.marvin.authorwithdateofdeath.full.hateoas+json")
+            {
+
+            }
+            var links = CreateLinksForAuthor(authorToReturn.Id, null);
+
+            var linkedResourceToReturn = authorToReturn.ShapeData(null)
+                as IDictionary<string, object>;
+
+            linkedResourceToReturn.Add("links", links);
+
+            return CreatedAtRoute("GetAuthor",
+                new { id = linkedResourceToReturn["Id"] },
+                linkedResourceToReturn);
+        }
+
 
         [HttpPost("{id}")]
         public IActionResult BlockAuthorCreation(Guid id)
